@@ -1,0 +1,60 @@
+#include <iostream>
+#include <pqxx/pqxx> 
+
+using namespace std;
+using namespace pqxx;
+
+// Function to register a new user
+void registerUser(connection& C, const string& email, const string& password) {
+    work W(C);
+    W.exec("INSERT INTO users (email, password) VALUES (" + W.quote(email) + ", " + W.quote(password) + ")");
+    W.commit();
+    cout << "User registered successfully." << endl;
+}
+
+// Function to log in a user
+bool loginUser(connection& C, const string& email, const string& password) {
+    nontransaction N(C);
+    result R(N.exec("SELECT * FROM users WHERE email=" + N.quote(email) + " AND password=" + N.quote(password)));
+    if (!R.empty()) {
+        cout << "Login successful." << endl;
+        return true;
+    } else {
+        cout << "Login failed." << endl;
+        return false;
+    }
+}
+
+// Function to send an email
+void sendEmail(connection& C, int sender_id, const string& receiver_email, const string& content) {
+    nontransaction N(C);
+    result R(N.exec("SELECT user_id FROM users WHERE email=" + N.quote(receiver_email)));
+    if (!R.empty()) {
+        int receiver_id = R[0][0].as<int>();
+        work W(C);
+        W.exec("INSERT INTO emails (sender_id, receiver_id, send_date, content) VALUES (" + W.quote(sender_id) + ", " + W.quote(receiver_id) + ", CURRENT_TIMESTAMP, " + W.quote(content) + ")");
+        W.commit();
+        cout << "Email sent successfully." << endl;
+    } else {
+        cout << "Receiver not found." << endl;
+    }
+}
+
+int main() {
+    // Database connection string
+    string conn_str = "dbname=email_management user=youruser password=yourpassword";
+    connection C(conn_str);
+    if (C.is_open()) {
+        // Register a user
+        registerUser(C, "test@example.com", "password123");
+
+        // Login a user
+        if (loginUser(C, "test@example.com", "password123")) {
+            // Send an email if login is successful
+            sendEmail(C, 1, "receiver@example.com", "Hello, this is a test email.");
+        }
+    } else {
+        cout << "Can't open database" << endl;
+    }
+    return 0;
+}

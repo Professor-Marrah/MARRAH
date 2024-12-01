@@ -1,0 +1,10 @@
+^D:\USESTC\MY_PROJECT\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/USESTC/MY_PROJECT -BD:/USESTC/MY_PROJECT/out/build --check-stamp-file D:/USESTC/MY_PROJECT/out/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

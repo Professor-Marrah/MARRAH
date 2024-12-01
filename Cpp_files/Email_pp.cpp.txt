@@ -1,0 +1,118 @@
+#include <iostream>
+#include <pqxx/pqxx> // PostgreSQL library
+#include <fstream>
+#include <sstream>
+
+// Function to convert file to Base64 string
+std::string encode_file_to_base64(const std::string& file_path) {
+    std::ifstream file(file_path, std::ios::binary);
+    std::ostringstream oss;
+    oss << file.rdbuf();
+    std::string content = oss.str();
+    return pqxx::to_base64(content);  // Using pqxx library to encode file data
+}
+
+// Function to send email with optional attachments
+void send_email_with_attachment(int sender_id, const std::vector<std::string>& receiver_emails, const std::string& content, const std::vector<std::string>& attachment_paths) {
+    try {
+        pqxx::work W(C);
+        
+        for (const std::string& receiver_email : receiver_emails) {
+            pqxx::result R = W.exec("SELECT user_id FROM users WHERE email=" + W.quote(receiver_email));
+            if (R.size() > 0) {
+                int receiver_id = R[0][0].as<int>();
+                W.exec("INSERT INTO emails (sender_id, receiver_id, content) VALUES (" + std::to_string(sender_id) + ", " + std::to_string(receiver_id) + ", " + W.quote(content) + ")");
+                W.commit();
+                
+                // Handle attachments
+                for (const std::string& file_path : attachment_paths) {
+                    std::string file_data = encode_file_to_base64(file_path);
+                    W.exec("INSERT INTO attachments (email_id, file_name, file_data) VALUES ((SELECT email_id FROM emails WHERE sender_id=" + std::to_string(sender_id) + " AND receiver_id=" + std::to_string(receiver_id) + " LIMIT 1), " + W.quote(file_path) + ", " + W.quote(file_data) + ")");
+                }
+            } else {
+                std::cout << "Receiver email " << receiver_email << " not found." << std::endl;
+            }
+        }
+    } catch (const pqxx::sql_error& e) {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+}
+
+// Function to mark email as read and notify sender
+void mark_as_read_and_notify(int email_id, int user_id) {
+    try {
+        pqxx::work W(C);
+        
+        // Insert a read receipt
+        W.exec("INSERT INTO read_receipts (email_id, user_id) VALUES (" + std::to_string(email_id) + ", " + std::to_string(user_id) + ")");
+        W.commit();
+        
+        // Notify the sender
+        pqxx::result sender = W.exec("SELECT sender_id FROM emails WHERE email_id = " + std::to_string(email_id));
+        int sender_id = sender[0][0].as<int>();
+        std::cout << "Email ID " << email_id << " has been read by user " << user_id << ". Notification sent to sender " << sender_id << "." << std::endl;
+    } catch (const pqxx::sql_error& e) {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+}
+
+// Function to send notifications
+void send_notification(int user_id, const std::string& message) {
+    try {
+        pqxx::work W(C);
+        W.exec("INSERT INTO notifications (user_id, message) VALUES (" + std::to_string(user_id) + ", " + W.quote(message) + ")");
+        W.commit();
+        std::cout << "Notification sent to user " << user_id << ": " << message << std::endl;
+    } catch (const pqxx::sql_error& e) {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+}
+
+// **Delete Email Function**
+void delete_email(int email_id) {
+    try {
+        pqxx::work W(C);
+        W.exec("DELETE FROM attachments WHERE email_id = " + std::to_string(email_id));
+        W.exec("DELETE FROM emails WHERE email_id = " + std::to_string(email_id));
+        W.commit();
+        std::cout << "Email ID " << email_id << " and its attachments have been deleted." << std::endl;
+    } catch (const pqxx::sql_error& e) {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+}
+
+// **Update Email Content Function**
+void update_email_content(int email_id, const std::string& new_content) {
+    try {
+        pqxx::work W(C);
+        W.exec("UPDATE emails SET content = " + W.quote(new_content) + " WHERE email_id = " + std::to_string(email_id));
+        W.commit();
+        std::cout << "Email ID " << email_id << " has been updated with new content." << std::endl;
+    } catch (const pqxx::sql_error& e) {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+}
+
+// **Delete Attachment Function**
+void delete_attachment(int attachment_id) {
+    try {
+        pqxx::work W(C);
+        W.exec("DELETE FROM attachments WHERE attachment_id = " + std::to_string(attachment_id));
+        W.commit();
+        std::cout << "Attachment ID " << attachment_id << " has been deleted." << std::endl;
+    } catch (const pqxx::sql_error& e) {
+        std::cout << "Error: " << e.what() << std::endl;
+    }
+}
+
+int main() {
+    // Example usage
+    send_email_with_attachment(1, {"user1@example.com", "user2@example.com"}, "Hello! This is an email.", {"file1.txt", "file2.jpg"});
+    mark_as_read_and_notify(1, 2);  // Mark email with ID 1 as read by user 2
+    send_notification(1, "You have a new email.");  // Send notification to user 1
+    delete_email(1);  // Delete email with ID 1
+    update_email_content(1, "Updated content for email.");  // Update the content of email with ID 1
+    delete_attachment(1);  // Delete attachment with ID 1
+
+    return 0;
+}

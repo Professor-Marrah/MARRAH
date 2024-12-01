@@ -1,0 +1,8 @@
+D:\USESTC\MY PROJECT\Email_sys_db\Email_sys_db\bin\Debug\Email_sys_db.dacpac
+D:\USESTC\MY PROJECT\Email_sys_db\Email_sys_db\obj\Debug\Email_sys_db.sqlproj.AssemblyReference.cache
+D:\USESTC\MY PROJECT\Email_sys_db\Email_sys_db\obj\Debug\Model.xml
+D:\USESTC\MY PROJECT\Email_sys_db\Email_sys_db\obj\Debug\refactor.xml
+D:\USESTC\MY PROJECT\Email_sys_db\Email_sys_db\obj\Debug\postdeploy.sql
+D:\USESTC\MY PROJECT\Email_sys_db\Email_sys_db\obj\Debug\predeploy.sql
+D:\USESTC\MY PROJECT\Email_sys_db\Email_sys_db\obj\Debug\Email_sys_db.dll
+D:\USESTC\MY PROJECT\Email_sys_db\Email_sys_db\obj\Debug\Email_sys_db.pdb

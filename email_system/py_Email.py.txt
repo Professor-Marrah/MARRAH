@@ -1,0 +1,79 @@
+import psycopg2
+from datetime import datetime
+
+# Connect to PostgreSQL database
+conn = psycopg2.connect("dbname=email_management user=youruser password=yourpassword")
+cursor = conn.cursor()
+
+def register_user(email, password):
+    cursor.execute("INSERT INTO users (email, password) VALUES (%s, %s)", (email, password))
+    conn.commit()
+    print("User registered successfully.")
+
+def login_user(email, password):
+    cursor.execute("SELECT * FROM users WHERE email = %s AND password = %s", (email, password))
+    user = cursor.fetchone()
+    if user:
+        print("Login successful.")
+        return user
+    else:
+        print("Login failed.")
+        return None
+
+def send_email(sender_id, receiver_email, content):
+    send_date = datetime.now()
+    cursor.execute("SELECT user_id FROM users WHERE email = %s", (receiver_email,))
+    receiver = cursor.fetchone()
+    if receiver:
+        receiver_id = receiver[0]
+        cursor.execute("INSERT INTO emails (sender_id, receiver_id, send_date, content) VALUES (%s, %s, %s, %s)",
+                       (sender_id, receiver_id, send_date, content))
+        conn.commit()
+        print("Email sent successfully.")
+    else:
+        print("Receiver not found.")
+
+# Sample usage
+register_user("test@example.com", "password123")
+user = login_user("test@example.com", "password123")
+if user:
+    send_email(user[0], "receiver@example.com", "Hello, this is a test email.")
+4.3 C++ Sample Outline
+In C++, you would use a library like libpqxx to connect to PostgreSQL and perform similar CRUD operations.
+
+cpp
+Copy code
+#include <iostream>
+#include <pqxx/pqxx> 
+
+using namespace std;
+using namespace pqxx;
+
+void registerUser(connection& C, string email, string password) {
+    work W(C);
+    W.exec("INSERT INTO users (email, password) VALUES (" + W.quote(email) + ", " + W.quote(password) + ")");
+    W.commit();
+    cout << "User registered successfully." << endl;
+}
+
+void loginUser(connection& C, string email, string password) {
+    nontransaction N(C);
+    result R(N.exec("SELECT * FROM users WHERE email=" + N.quote(email) + " AND password=" + N.quote(password)));
+    if (!R.empty()) {
+        cout << "Login successful." << endl;
+    } else {
+        cout << "Login failed." << endl;
+    }
+}
+
+int main() {
+    string conn_str = "dbname=email_management user=youruser password=yourpassword";
+    connection C(conn_str);
+    if (C.is_open()) {
+        registerUser(C, "test@example.com", "password123");
+        loginUser(C, "test@example.com", "password123");
+    } else {
+        cout << "Can't open database" << endl;
+    }
+    return 0;
+}

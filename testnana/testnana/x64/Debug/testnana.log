@@ -1,0 +1,2 @@
+﻿  testnana.cpp
+D:\USESTC\MY PROJECT\testnana\testnana\testnana.cpp(4,10): error C1083: Cannot open include file: 'nana/gui.hpp': No such file or directory

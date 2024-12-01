@@ -1,0 +1,94 @@
+import psycopg2
+from datetime import datetime
+import base64
+
+# Database connection
+conn = psycopg2.connect(dbname="email_system", user="your_user", password="your_password", host="localhost")
+cursor = conn.cursor()
+
+# Function to send an email with optional attachments
+def send_email_with_attachment(sender_id, receiver_emails, content, attachment_paths=[]):
+    for receiver_email in receiver_emails:
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (receiver_email,))
+        receiver = cursor.fetchone()
+        
+        if receiver:
+            receiver_id = receiver[0]
+            send_date = datetime.now()
+            
+            # Insert email metadata into the emails table
+            cursor.execute("INSERT INTO emails (sender_id, receiver_id, send_date, content) VALUES (%s, %s, %s, %s) RETURNING email_id", 
+                           (sender_id, receiver_id, send_date, content))
+            email_id = cursor.fetchone()[0]
+            
+            # Insert file attachments into the database
+            for attachment_path in attachment_paths:
+                with open(attachment_path, "rb") as file:
+                    file_data = base64.b64encode(file.read()).decode('utf-8')
+                    file_name = attachment_path.split("/")[-1]
+                    cursor.execute("INSERT INTO attachments (email_id, file_name, file_data) VALUES (%s, %s, %s)",
+                                   (email_id, file_name, file_data))
+            
+            conn.commit()
+            print(f"Email with attachments sent to {receiver_email}.")
+        else:
+            print(f"Receiver email {receiver_email} not found.")
+
+# Function to mark email as read and notify sender
+def mark_as_read_and_notify(email_id, user_id):
+    cursor.execute("SELECT sender_id FROM emails WHERE email_id = %s", (email_id,))
+    sender_id = cursor.fetchone()[0]
+    
+    # Insert into read_receipts to mark as read
+    cursor.execute("INSERT INTO read_receipts (email_id, user_id) VALUES (%s, %s)", (email_id, user_id))
+    conn.commit()
+    
+    # Notify the sender that the email has been read
+    print(f"Email ID {email_id} has been read by {user_id}. Sending receipt to sender {sender_id}.")
+    # You can send a notification to the sender using an email or messaging system
+
+# Function to send notifications to users
+def send_notification(user_id, message):
+    cursor.execute("INSERT INTO notifications (user_id, message) VALUES (%s, %s)", (user_id, message))
+    conn.commit()
+    print(f"Notification sent to user {user_id}: {message}")
+
+# Function to view unread notifications for a user
+def view_notifications(user_id):
+    cursor.execute("SELECT message, created_at FROM notifications WHERE user_id = %s AND is_read = FALSE", (user_id,))
+    notifications = cursor.fetchall()
+    
+    for notification in notifications:
+        print(f"{notification[0]} (Received on {notification[1]})")
+    
+    # Mark notifications as read after viewing
+    cursor.execute("UPDATE notifications SET is_read = TRUE WHERE user_id = %s", (user_id,))
+    conn.commit()
+
+# **Delete Email Function**
+def delete_email(email_id):
+    cursor.execute("DELETE FROM attachments WHERE email_id = %s", (email_id,))
+    cursor.execute("DELETE FROM emails WHERE email_id = %s", (email_id,))
+    conn.commit()
+    print(f"Email ID {email_id} and its attachments have been deleted.")
+
+# **Update Email Content Function**
+def update_email_content(email_id, new_content):
+    cursor.execute("UPDATE emails SET content = %s WHERE email_id = %s", (new_content, email_id))
+    conn.commit()
+    print(f"Email ID {email_id} has been updated with new content.")
+
+# **Delete Attachment Function**
+def delete_attachment(attachment_id):
+    cursor.execute("DELETE FROM attachments WHERE attachment_id = %s", (attachment_id,))
+    conn.commit()
+    print(f"Attachment ID {attachment_id} has been deleted.")
+
+# Example usage: Send an email with attachments, mark as read, send notifications, delete email, and update content
+send_email_with_attachment(1, ["user1@example.com", "user2@example.com"], "Hello! This is an email.", ["file1.txt", "file2.jpg"])
+mark_as_read_and_notify(1, 2)  # Mark email with ID 1 as read by user 2
+send_notification(1, "You have a new email.")  # Send notification to user 1
+view_notifications(1)  # View unread notifications for user 1
+delete_email(1)  # Delete email with ID 1
+update_email_content(1, "Updated content for email.")  # Update the content of email with ID 1
+delete_attachment(1)  # Delete attachment with ID 1

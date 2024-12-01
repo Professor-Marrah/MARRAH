@@ -1,0 +1,10 @@
+^D:\USESTC\MY_PROJECT\OUT\BUILD\CMAKEFILES\629C3FAD3ACDCD7B7F95B8906E00E0CA\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SD:/USESTC/MY_PROJECT -BD:/USESTC/MY_PROJECT/out/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file D:/USESTC/MY_PROJECT/out/build/EmailManagementSystem.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
